@@ -1,6 +1,10 @@
 import random
 import os
 import sys
+import io
+
+if os.name == 'nt':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 def clear():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -106,7 +110,7 @@ def combat(hero, enemy):
         print("╔════════════════════════════════════════╗")
         print(f"║ COMBAT: {enemy_name:<31} ║")
         print("╚════════════════════════════════════════╝")
-        print(f"\nHero HP:   {hero.hp}/{hero.max_hp}")
+        print(f"\nHero HP:   {hero.hp}/{hero.max_hp} | Lv{hero.level} | ATK{hero.get_attack()} | DEF{hero.get_defense()} | XP{hero.xp}")
         print(f"Enemy HP:  {enemy.hp}/{enemy.max_hp}")
         print("\n[1] Attack")
         print("[2] Use Potion")
@@ -131,7 +135,7 @@ def combat(hero, enemy):
             else:
                 print("Available potions:")
                 for i, potion in enumerate(hero.potions):
-                    print(f"  [{i+1}] {potion['name']} ({potion['heal']} HP) x{hero.potions.count(potion)}")
+                    print(f"  [{i+1}] {potion['name']} ({potion['heal']} HP)")
                 potion_choice = input("Use potion (number): ").strip()
                 try:
                     idx = int(potion_choice) - 1
@@ -144,14 +148,13 @@ def combat(hero, enemy):
                         print(f"{enemy_name} attacked! You took {taken} damage.")
                     else:
                         print("Invalid choice!")
-                        continue
                 except:
                     print("Invalid choice!")
-                    continue
                     
         elif choice == "3":
             if random.random() < 0.4:
                 print("You fled successfully!")
+                input("\nPress ENTER to continue...")
                 return "fled"
             else:
                 print("Failed to flee!")
@@ -160,21 +163,25 @@ def combat(hero, enemy):
                 print(f"{enemy_name} attacked! You took {taken} damage.")
         else:
             print("Invalid choice!")
-            continue
         
-        input("\nPress Enter to continue...")
-        clear()
+        input("\nPress ENTER to continue...")
     
+    clear()
     if hero.is_alive():
-        print(f"Victory! You defeated the {enemy_name}!")
-        print(f"Gained {enemy.xp_reward} XP and {enemy.gold_reward} gold.")
-        hero.gain_xp(enemy.xp_reward)
+        print("╔════════════════════════════════════════╗")
+        print("║ VICTORY!                               ║")
+        print("╚════════════════════════════════════════╝")
         hero.gold += enemy.gold_reward
+        hero.gain_xp(enemy.xp_reward)
+        print(f"\nYou defeated {enemy_name}!")
+        print(f"+{enemy.xp_reward} XP")
+        print(f"+{enemy.gold_reward} Gold")
+        input("\nPress ENTER to continue...")
         return "victory"
     else:
         return "defeat"
 
-# ── Shop ─────────────────────────────────────────────────────────────────────
+# ── Shop System ──────────────────────────────────────────────────────────────
 def shop(hero):
     while True:
         clear()
@@ -182,202 +189,261 @@ def shop(hero):
         print("║ SHOP                                   ║")
         print("╚════════════════════════════════════════╝")
         print(f"\nGold: {hero.gold}")
-        print(f"\n[WEAPONS]")
-        for i, weapon in enumerate(WEAPONS):
-            owned = "✓" if any(w["name"] == weapon["name"] for w in hero.weapons) else " "
-            print(f"  [{owned}] {weapon['name']:<20} {weapon['price']:>3}g (ATK +{weapon['bonus']})")
+        print(f"HP: {hero.hp}/{hero.max_hp} | Level {hero.level} | XP {hero.xp}")
+        print("\n[1] Buy Weapon")
+        print("[2] Buy Potion")
+        print("[3] View Inventory")
+        print("[4] Leave")
         
-        print(f"\n[POTIONS]")
-        for i, potion in enumerate(POTIONS):
-            print(f"  [{i+1}] {potion['name']:<20} {potion['price']:>3}g ({potion['heal']} HP)")
+        choice = input("\nChoose: ").strip()
         
-        print("\n[0] Exit Shop")
-        choice = input("\nBuy item (0-7): ").strip()
-        
-        if choice == "0":
-            return
-        elif choice in ["1", "2", "3", "4"]:
-            idx = int(choice) - 1
-            weapon = WEAPONS[idx]
-            if hero.gold >= weapon["price"]:
-                if any(w["name"] == weapon["name"] for w in hero.weapons):
-                    print("Already own this weapon!")
+        if choice == "1":
+            clear()
+            print("╔════════════════════════════════════════╗")
+            print("║ WEAPONS                                ║")
+            print("╚════════════════════════════════════════╝")
+            for i, weapon in enumerate(WEAPONS):
+                print(f"[{i+1}] {weapon['name']:<20} ATK+{weapon['bonus']:<2} | {weapon['price']} gold")
+            buy = input("\nBuy (number, 0 to cancel): ").strip()
+            try:
+                idx = int(buy) - 1
+                if idx == -1:
+                    continue
+                if 0 <= idx < len(WEAPONS):
+                    weapon = WEAPONS[idx]
+                    if hero.gold >= weapon["price"]:
+                        hero.gold -= weapon["price"]
+                        hero.weapons.append(weapon.copy())
+                        print(f"\nBought {weapon['name']}!")
+                        input("Press ENTER to continue...")
+                    else:
+                        print("\nNot enough gold!")
+                        input("Press ENTER to continue...")
                 else:
-                    hero.gold -= weapon["price"]
-                    hero.weapons.append(weapon.copy())
-                    print(f"Purchased {weapon['name']}!")
-            else:
-                print("Not enough gold!")
-        elif choice in ["5", "6", "7"]:
-            idx = int(choice) - 5
-            potion = POTIONS[idx]
-            if hero.gold >= potion["price"]:
-                hero.gold -= potion["price"]
-                hero.potions.append(potion.copy())
-                print(f"Purchased {potion['name']}!")
-            else:
-                print("Not enough gold!")
-        else:
-            print("Invalid choice!")
+                    print("\nInvalid choice!")
+                    input("Press ENTER to continue...")
+            except:
+                print("\nInvalid choice!")
+                input("Press ENTER to continue...")
         
-        input("\nPress Enter to continue...")
-
-# ── Room Display ─────────────────────────────────────────────────────────────
-def display_room(hero, room_type, enemy=None):
-    clear()
-    print("╔════════════════════════════════════════╗")
-    print(f"║ ROOM ({hero.x},{hero.y})                        ║")
-    print("╚════════════════════════════════════════╝")
-    
-    print(f"\nHP: {hero.hp}/{hero.max_hp} | ATK: {hero.get_attack()} | DEF: {hero.get_defense()} | Level: {hero.level} | XP: {hero.xp} | Gold: {hero.gold}")
-    print(f"Weapon: {hero.weapons[hero.equipped_weapon]['name']}")
-    
-    if room_type == "shop":
-        print("\n[SHOP] A merchant stands ready to trade.")
-    elif room_type == "boss":
-        print("\n[BOSS ROOM] The dragon awaits...\n")
-        if enemy:
-            print(f"Enemy: {enemy.type.upper()} (HP: {enemy.hp}/{enemy.max_hp})")
-    elif room_type == "enemy":
-        print(f"\n[ENEMY] An {enemy.type} appears!\n")
-        print(f"Enemy: {enemy.type.capitalize()} (HP: {enemy.hp}/{enemy.max_hp})")
-    else:
-        print("\n[EMPTY] The room is empty.")
-    
-    print("\n[W/A/S/D] Move | [I] Inventory | [E] Equipment | [Enter] Interact")
-
-# ── Inventory ────────────────────────────────────────────────────────────────
-def inventory(hero):
-    clear()
-    print("╔════════════════════════════════════════╗")
-    print("║ INVENTORY                              ║")
-    print("╚════════════════════════════════════════╝")
-    
-    print(f"\nGold: {hero.gold}")
-    print(f"\n[WEAPONS] ({len(hero.weapons)})")
-    for i, weapon in enumerate(hero.weapons):
-        equipped = "★" if i == hero.equipped_weapon else " "
-        print(f"  [{equipped}] {weapon['name']:<20} ATK +{weapon['bonus']}")
-    
-    print(f"\n[POTIONS] ({len(hero.potions)})")
-    potion_counts = {}
-    for potion in hero.potions:
-        potion_counts[potion["name"]] = potion_counts.get(potion["name"], 0) + 1
-    for potion_name, count in potion_counts.items():
-        for potion in POTIONS:
-            if potion["name"] == potion_name:
-                print(f"  {potion_name:<20} x{count}")
-                break
-    
-    print("\n[0] Back")
-    choice = input("Choose option: ").strip()
-
-def equipment(hero):
-    clear()
-    print("╔════════════════════════════════════════╗")
-    print("║ EQUIPMENT                              ║")
-    print("╚════════════════════════════════════════╝")
-    
-    print(f"\nWeapons:")
-    for i, weapon in enumerate(hero.weapons):
-        equipped = "★" if i == hero.equipped_weapon else " "
-        print(f"  [{equipped}] {i+1}: {weapon['name']:<20} ATK +{weapon['bonus']}")
-    
-    print("\n[0] Back")
-    choice = input("Equip weapon (0-5): ").strip()
-    if choice == "0":
-        return
-    try:
-        idx = int(choice) - 1
-        if 0 <= idx < len(hero.weapons):
-            hero.equipped_weapon = idx
-            print(f"Equipped {hero.weapons[idx]['name']}!")
-        else:
-            print("Invalid choice!")
-    except:
-        print("Invalid choice!")
-    input("\nPress Enter to continue...")
-
-# ── Main Game ────────────────────────────────────────────────────────────────
-def main():
-    hero = Hero()
-    rooms = {}
-    
-    # Initialize 5-room grid: (0,0)-(2,2) with (1,1) as center (shop)
-    for x in range(0, 3):
-        for y in range(0, 3):
-            if (x, y) == (1, 1):
-                rooms[(x, y)] = {"type": "shop", "enemy": None}
-            elif (x, y) == (2, 2):
-                rooms[(x, y)] = {"type": "boss", "enemy": Enemy("dragon")}
+        elif choice == "2":
+            clear()
+            print("╔════════════════════════════════════════╗")
+            print("║ POTIONS                                ║")
+            print("╚════════════════════════════════════════╝")
+            for i, potion in enumerate(POTIONS):
+                print(f"[{i+1}] {potion['name']:<20} HEAL+{potion['heal']:<3} | {potion['price']} gold")
+            buy = input("\nBuy (number, 0 to cancel): ").strip()
+            try:
+                idx = int(buy) - 1
+                if idx == -1:
+                    continue
+                if 0 <= idx < len(POTIONS):
+                    potion = POTIONS[idx]
+                    if hero.gold >= potion["price"]:
+                        hero.gold -= potion["price"]
+                        hero.potions.append(potion.copy())
+                        print(f"\nBought {potion['name']}!")
+                        input("Press ENTER to continue...")
+                    else:
+                        print("\nNot enough gold!")
+                        input("Press ENTER to continue...")
+                else:
+                    print("\nInvalid choice!")
+                    input("Press ENTER to continue...")
+            except:
+                print("\nInvalid choice!")
+                input("Press ENTER to continue...")
+        
+        elif choice == "3":
+            clear()
+            print("╔════════════════════════════════════════╗")
+            print("║ INVENTORY                              ║")
+            print("╚════════════════════════════════════════╝")
+            print("\nWeapons:")
+            for i, weapon in enumerate(hero.weapons):
+                equipped = " [EQUIPPED]" if i == hero.equipped_weapon else ""
+                print(f"  [{i+1}] {weapon['name']:<20} ATK+{weapon['bonus']}{equipped}")
+            print("\nPotions:")
+            if hero.potions:
+                for i, potion in enumerate(hero.potions):
+                    print(f"  [{i+1}] {potion['name']:<20} HEAL+{potion['heal']}")
             else:
+                print("  (none)")
+            print("\n[1] Equip Weapon")
+            print("[2] Back")
+            inv_choice = input("\nChoose: ").strip()
+            if inv_choice == "1":
+                clear()
+                print("Equip which weapon?")
+                for i, weapon in enumerate(hero.weapons):
+                    print(f"  [{i+1}] {weapon['name']}")
+                eq = input("\nChoose: ").strip()
+                try:
+                    idx = int(eq) - 1
+                    if 0 <= idx < len(hero.weapons):
+                        hero.equipped_weapon = idx
+                        print(f"\nEquipped {hero.weapons[idx]['name']}!")
+                        input("Press ENTER to continue...")
+                except:
+                    pass
+        
+        elif choice == "4":
+            break
+
+# ── Room System ──────────────────────────────────────────────────────────────
+class GameWorld:
+    def __init__(self):
+        self.rooms = {}
+        self.current_enemy = None
+        self.init_rooms()
+    
+    def init_rooms(self):
+        self.rooms = {
+            (0, 0): {"name": "Guard Room",      "type": "normal", "enemy": None},
+            (1, 0): {"name": "Goblin Den",      "type": "normal", "enemy": None},
+            (2, 0): {"name": "Skeleton Crypt",  "type": "normal", "enemy": None},
+            (1, 1): {"name": "Merchant's Hall", "type": "shop",   "enemy": None},
+            (2, 1): {"name": "Dragon's Lair",   "type": "boss",   "enemy": None},
+        }
+        self.spawn_enemies()
+    
+    def spawn_enemies(self):
+        for pos in self.rooms:
+            room = self.rooms[pos]
+            if room["type"] == "normal":
                 if random.random() < 0.6:
                     enemy_type = random.choice(["goblin", "skeleton"])
-                    rooms[(x, y)] = {"type": "enemy", "enemy": Enemy(enemy_type)}
-                else:
-                    rooms[(x, y)] = {"type": "empty", "enemy": None}
+                    room["enemy"] = Enemy(enemy_type)
+            elif room["type"] == "boss":
+                room["enemy"] = Enemy("dragon")
     
-    # Ensure spawn room is empty
-    rooms[(1, 1)]["type"] = "shop"
-    rooms[(1, 1)]["enemy"] = None
+    def get_room(self, x, y):
+        return self.rooms.get((x, y))
     
-    game_over = False
-    
-    while not game_over:
-        current_room = rooms[(hero.x, hero.y)]
-        display_room(hero, current_room["type"], current_room["enemy"])
+    def describe_room(self, hero):
+        room = self.get_room(hero.x, hero.y)
+        if not room:
+            return "Unknown area."
         
-        choice = input("\nAction: ").strip().lower()
+        desc = f"\n{room['name']}\n"
+        if room["type"] == "boss":
+            desc += "The terrifying dragon awaits...\n"
+        elif room["type"] == "shop":
+            desc += "A merchant stands ready.\n"
+        elif room["enemy"]:
+            desc += f"A {room['enemy'].type} lurks here!\n"
+        else:
+            desc += "This room is empty.\n"
+        return desc
+
+# ── Main Game Loop ───────────────────────────────────────────────────────────
+def game_over_defeat():
+    clear()
+    print("╔════════════════════════════════════════╗")
+    print("║ DEFEAT                                 ║")
+    print("║ You have fallen in the dungeon...      ║")
+    print("╚════════════════════════════════════════╝")
+    input("\nPress ENTER to quit...")
+
+def game_over_victory():
+    clear()
+    print("╔════════════════════════════════════════╗")
+    print("║ VICTORY!                               ║")
+    print("║ You defeated the dragon!               ║")
+    print("║ The dungeon is now yours!              ║")
+    print("╚════════════════════════════════════════╝")
+    input("\nPress ENTER to quit...")
+
+def main():
+    hero = Hero()
+    world = GameWorld()
+    
+    clear()
+    print("╔════════════════════════════════════════╗")
+    print("║ DUNGEON CRAWLER                        ║")
+    print("║ Defeat the dragon to escape!           ║")
+    print("╚════════════════════════════════════════╝")
+    input("\nPress ENTER to begin...")
+    
+    while True:
+        clear()
+        print("╔════════════════════════════════════════╗")
+        print(f"║ Level {hero.level} | HP {hero.hp}/{hero.max_hp} | ATK {hero.get_attack()} | DEF {hero.get_defense()} | XP {hero.xp} | Gold {hero.gold}")
+        print("╚════════════════════════════════════════╝")
         
-        if choice == "w" and hero.y > 0:
-            hero.y -= 1
-        elif choice == "s" and hero.y < 2:
-            hero.y += 1
-        elif choice == "a" and hero.x > 0:
-            hero.x -= 1
-        elif choice == "d" and hero.x < 2:
-            hero.x += 1
-        elif choice == "i":
-            inventory(hero)
-        elif choice == "e":
-            equipment(hero)
-        elif choice == "":
-            if current_room["type"] == "shop":
+        room = world.get_room(hero.x, hero.y)
+        print(world.describe_room(hero))
+        
+        print("═" * 40)
+        print(f"Position: ({hero.x}, {hero.y})")
+        print("Navigation:")
+        if world.get_room(hero.x - 1, hero.y):
+            print("  [A] Left")
+        if world.get_room(hero.x + 1, hero.y):
+            print("  [D] Right")
+        if world.get_room(hero.x, hero.y - 1):
+            print("  [W] Up")
+        if world.get_room(hero.x, hero.y + 1):
+            print("  [S] Down")
+        
+        if room["type"] == "shop":
+            print("  [E] Enter Shop")
+        elif room["enemy"]:
+            print("  [E] Fight")
+        
+        print("  [I] Inventory")
+        print("  [Q] Quit Game")
+        
+        action = input("\nAction: ").strip().lower()
+        
+        if action == "a":
+            if world.get_room(hero.x - 1, hero.y):
+                hero.x -= 1
+        elif action == "d":
+            if world.get_room(hero.x + 1, hero.y):
+                hero.x += 1
+        elif action == "w":
+            if world.get_room(hero.x, hero.y - 1):
+                hero.y -= 1
+        elif action == "s":
+            if world.get_room(hero.x, hero.y + 1):
+                hero.y += 1
+        elif action == "e":
+            if room["type"] == "shop":
                 shop(hero)
-            elif current_room["type"] == "enemy" and current_room["enemy"]:
-                result = combat(hero, current_room["enemy"])
+            elif room["enemy"]:
+                result = combat(hero, room["enemy"])
                 if result == "victory":
-                    current_room["enemy"] = None
-                    current_room["type"] = "empty"
+                    room["enemy"] = None
+                    if room["type"] == "boss":
+                        game_over_victory()
+                        return
                 elif result == "defeat":
-                    clear()
-                    print("╔════════════════════════════════════════╗")
-                    print("║ YOU DIED                               ║")
-                    print("╚════════════════════════════════════════╝")
-                    print(f"\nReached Level: {hero.level}")
-                    print(f"Total XP: {hero.xp}")
-                    game_over = True
-                input("\nPress Enter to continue...")
-            elif current_room["type"] == "boss" and current_room["enemy"]:
-                result = combat(hero, current_room["enemy"])
-                if result == "victory":
-                    clear()
-                    print("╔════════════════════════════════════════╗")
-                    print("║ VICTORY! DRAGON DEFEATED!             ║")
-                    print("╚════════════════════════════════════════╝")
-                    print(f"\nFinal Level: {hero.level}")
-                    print(f"Total XP: {hero.xp}")
-                    print(f"Total Gold: {hero.gold}")
-                    game_over = True
-                elif result == "defeat":
-                    clear()
-                    print("╔════════════════════════════════════════╗")
-                    print("║ DEFEATED BY THE DRAGON                 ║")
-                    print("╚════════════════════════════════════════╝")
-                    print(f"\nReached Level: {hero.level}")
-                    print(f"Total XP: {hero.xp}")
-                    game_over = True
-                input("\nPress Enter to continue...")
+                    game_over_defeat()
+                    return
+        elif action == "i":
+            clear()
+            print("╔════════════════════════════════════════╗")
+            print("║ INVENTORY                              ║")
+            print("╚════════════════════════════════════════╝")
+            print("\nWeapons:")
+            for i, weapon in enumerate(hero.weapons):
+                equipped = " [EQUIPPED]" if i == hero.equipped_weapon else ""
+                print(f"  [{i+1}] {weapon['name']:<20} ATK+{weapon['bonus']}{equipped}")
+            print("\nPotions:")
+            if hero.potions:
+                for i, potion in enumerate(hero.potions):
+                    print(f"  [{i+1}] {potion['name']:<20} HEAL+{potion['heal']}")
+            else:
+                print("  (none)")
+            input("\nPress ENTER to continue...")
+        elif action == "q":
+            break
+        
+        if not hero.is_alive():
+            game_over_defeat()
+            return
 
 if __name__ == "__main__":
     main()
